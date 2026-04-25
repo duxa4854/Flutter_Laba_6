@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:slot_machine/slot_row.dart';
+import 'sounds_service.dart';
 
 class SlotMachine extends StatefulWidget {
   const SlotMachine({super.key});
@@ -54,10 +55,15 @@ class _SlotMachineState extends State<SlotMachine> {
 
   Future<void> _spin() async {
     if (_coins <= 0 || _isSpinning) return;
+    SoundService.playClick();
     setState(() {
       _isSpinning = true;
       _message = '';
     });
+    if (!_backgroundStarted) {
+      SoundService.playBackGround();
+      _backgroundStarted = true;
+    }
     final result1 = await _spinReel(
       totalTicks: 10,
       onTick: (val) => setState(() => _slot1 = val),
@@ -78,19 +84,50 @@ class _SlotMachineState extends State<SlotMachine> {
         if (result1 == 'assets/images/seven.png') {
           _coins += 10;
           _message = 'ДЖЕКПОТ! +10 монет';
+          SoundService.playJackpot();
         } else {
+          _coins += 3;
+          _message = 'Победа! +3 монеты';
+          SoundService.playWin();
+        }
+      }else {
           _coins -= 1;
           _message = "Попробуй еще раз -1 монета";
+          SoundService.playLose();
         }
-      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    var _isMuted = false;
+
+    void _toggleMute() {
+      SoundService.toggleMute();
+      setState(() {
+        _isMuted = SoundService.isMuted;
+      });
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
+        Align(
+          alignment: Alignment.topRight,
+          child: Padding(
+            padding: EdgeInsets.only(right: 16,top: 8),
+            child: IconButton(
+              onPressed: _toggleMute,
+              icon:  Icon(
+                _isMuted
+                  ? Icons.volume_off
+                  : Icons.volume_up,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
         Text(
           'Монеты: $_coins',
           style: TextStyle(
@@ -123,9 +160,7 @@ class _SlotMachineState extends State<SlotMachine> {
 
         SizedBox(height: 40),
         ElevatedButton(
-          onPressed: _coins > 0 && !_isSpinning
-          ? _spin
-          : null,
+          onPressed: _coins > 0 && !_isSpinning ? _spin : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.amber,
             padding: EdgeInsets.symmetric(
@@ -134,7 +169,7 @@ class _SlotMachineState extends State<SlotMachine> {
             ),
           ),
           child: Text(
-            _isSpinning ? 'Крутим...': 'Крутить',
+            _isSpinning ? 'Крутим...' : 'Крутить',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -144,7 +179,7 @@ class _SlotMachineState extends State<SlotMachine> {
         ),
         SizedBox(height: 12),
         TextButton(
-          onPressed: _isSpinning ? null: _reset,
+          onPressed: _isSpinning ? null : _reset,
           child: Text(
             'Начать заново',
             style: TextStyle(color: Colors.white70, fontSize: 16),
@@ -153,4 +188,13 @@ class _SlotMachineState extends State<SlotMachine> {
       ],
     );
   }
+  @override
+  void initState() {
+    super.initState();
+    SoundService.playBackGround();
+  }
+
+  var _backgroundStarted = false;
+    
 }
+
